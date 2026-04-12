@@ -265,6 +265,17 @@ void myMesh::triangulate()
 // return false if already triangle, true othewise.
 bool myMesh::triangulate(myFace *f)
 {
-	/**** TODO ****/
+	int n = 0;
+	myHalfedge *he = f->adjacent_halfedge;
+	do { n++; he = he->next; } while ( he != f->adjacent_halfedge );
+	if (n<=3){
+		return false;
+	}
+	vector<myHalfedge *> border;
+	he = f->adjacent_halfedge;
+	do {border.push_back(he); he->next; } while (he != f->adjacent_halfedge);
+
+
+
 	return false;
 }
