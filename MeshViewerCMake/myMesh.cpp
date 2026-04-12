@@ -259,7 +259,16 @@ void myMesh::simplify(myVertex *)
 
 void myMesh::triangulate()
 {
-	/**** TODO ****/
+    vector<myFace *> todo;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        int n = 0;
+        myHalfedge *he = faces[i]->adjacent_halfedge;
+        do { n++; he = he->next; } while (he != faces[i]->adjacent_halfedge);
+        if (n > 3) todo.push_back(faces[i]);
+    }
+    for (unsigned int i = 0; i < todo.size(); i++)
+        triangulate(todo[i]);
 }
 
 // return false if already triangle, true othewise.
