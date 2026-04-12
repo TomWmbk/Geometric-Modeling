@@ -253,7 +253,7 @@ void display()
 			double res1 = direction * *e->adjacent_face->normal;
 			double res2 = direction * *e->twin->adjacent_face->normal;
 
-			if ( res1>0 != res2 <0)
+			if ( res1<0 != res2 <0)
 			{
 				silhouette_edges.push_back(v1->index);
 				silhouette_edges.push_back(v2->index);
