@@ -281,6 +281,52 @@ bool myMesh::triangulate(myFace *f)
 		center->Y += border[i]->source->point->Y;
 		center->Z += border[i]->source->point->Z;
 	}
+	*center /= n;
 
-	return false;
+	myVertex *cv = new myVertex();
+	cv->point = center;
+	cv->index = (int)vertices.size();
+	vertices.push_back(cv);
+
+	    vector<myHalfedge *> h_to(n), h_from(n);
+    for (int i = 0; i < n; i++)
+    {
+        myFace *nf = new myFace();
+        nf->index = (int)faces.size();
+        faces.push_back(nf);
+
+        myHalfedge *ht = new myHalfedge();
+        myHalfedge *hf = new myHalfedge();
+
+        ht->source = border[(i + 1) % n]->source;
+        ht->adjacent_face = nf;
+        ht->index = (int)halfedges.size();
+        halfedges.push_back(ht);
+
+        hf->source = cv;
+        hf->adjacent_face = nf;
+        hf->index = (int)halfedges.size();
+        halfedges.push_back(hf);
+
+        border[i]->adjacent_face = nf;
+        border[i]->next = ht; ht->prev = border[i];
+        ht->next = hf;        hf->prev = ht;
+        hf->next = border[i]; border[i]->prev = hf;
+
+        nf->adjacent_halfedge = border[i];
+        h_to[i] = ht;
+        h_from[i] = hf;
+    }
+
+    for (int i = 0; i < n; i++) {
+        h_from[i]->twin = h_to[(i - 1 + n) % n];
+        h_to[(i - 1 + n) % n]->twin = h_from[i];
+    }
+
+    cv->originof = h_from[0];
+    faces.erase(find(faces.begin(), faces.end(), f));
+    delete f;
+
+    return true;
 }
+
