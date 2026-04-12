@@ -273,9 +273,14 @@ bool myMesh::triangulate(myFace *f)
 	}
 	vector<myHalfedge *> border;
 	he = f->adjacent_halfedge;
-	do {border.push_back(he); he->next; } while (he != f->adjacent_halfedge);
+	do {border.push_back(he); he = he->next; } while (he != f->adjacent_halfedge);
 
-
+	myPoint3D *center = new myPoint3D(0,0,0);
+	for(int i = 0; i<n; i++){
+		center->X += border[i]->source->point->X;
+		center->Y += border[i]->source->point->Y;
+		center->Z += border[i]->source->point->Z;
+	}
 
 	return false;
 }
