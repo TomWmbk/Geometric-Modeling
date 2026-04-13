@@ -48,8 +48,8 @@ enum { VAO_TRIANGLES_NORMSPERVERTEX = 0, VAO_TRIANGLES_NORMSPERFACE, VAO_EDGES, 
 
 bool smooth = false; //smooth = true means smooth normals, default false means face-wise normals.
 bool drawmesh = true;
-bool drawwireframe = false;
-bool drawmeshvertices = false;
+bool drawwireframe = true;
+bool drawmeshvertices = true;
 bool drawsilhouette = false;
 bool drawnormals = false;
 
@@ -395,6 +395,8 @@ void mouse(int button, int state, int x, int y)
 			}
 		}
 		else if (button == GLUT_MIDDLE_BUTTON) {}
+		else if (button == 3) { camera_eye += camera_forward * 0.02; }   // scroll up
+		else if (button == 4) { camera_eye += -camera_forward * 0.02; }  // scroll down
 		else if (button == GLUT_RIGHT_BUTTON) {}
 	}
 
@@ -523,7 +525,7 @@ void keyboard(unsigned char key, int x, int y) {
 void initInterface(int argc, char* argv[])
 {
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutCreateWindow("My 4I-IG3 Application!");
 
 	glewExperimental = GL_TRUE;

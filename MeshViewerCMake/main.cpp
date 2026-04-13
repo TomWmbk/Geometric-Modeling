@@ -353,7 +353,7 @@ void display()
 	color[0] = 0.9f;
 	draw_text(Glut_w - 150.0f, Glut_h - 20.0f, 0, "FPS:       " + to_string(static_cast<long long>( fps)), color );
 
-	glFlush();
+	glutSwapBuffers();
 }
 
 
