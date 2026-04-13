@@ -271,71 +271,52 @@ void myMesh::triangulate()
         triangulate(todo[i]);
 }
 
-// return false if already triangle, true othewise.
 bool myMesh::triangulate(myFace *f)
 {
-	int n = 0;
-	myHalfedge *he = f->adjacent_halfedge;
-	do { n++; he = he->next; } while ( he != f->adjacent_halfedge );
-	if (n<=3){
-		return false;
-	}
-	vector<myHalfedge *> border;
-	he = f->adjacent_halfedge;
-	do {border.push_back(he); he = he->next; } while (he != f->adjacent_halfedge);
+    int n = 0;
+    myHalfedge *e = f->adjacent_halfedge;
+    do { n++; e = e->next; } while (e != f->adjacent_halfedge);
+    
+    if (n == 3) return false;
+    
+    vector<myHalfedge *> old_edges;
+    e = f->adjacent_halfedge;
+    for (int i = 0; i < n; i++) { old_edges.push_back(e); e = e->next; }
 
-	myPoint3D *center = new myPoint3D(0,0,0);
-	for(int i = 0; i<n; i++){
-		center->X += border[i]->source->point->X;
-		center->Y += border[i]->source->point->Y;
-		center->Z += border[i]->source->point->Z;
-	}
-	*center /= n;
-
-	myVertex *cv = new myVertex();
-	cv->point = center;
-	cv->index = (int)vertices.size();
-	vertices.push_back(cv);
-
-	    vector<myHalfedge *> h_to(n), h_from(n);
-    for (int i = 0; i < n; i++)
+    int nd = n - 3;
+    vector<myHalfedge *> diag_in(nd), diag_out(nd);
+    for (int k = 0; k < nd; k++)
     {
-        myFace *nf = new myFace();
-        nf->index = (int)faces.size();
-        faces.push_back(nf);
-
-        myHalfedge *ht = new myHalfedge();
-        myHalfedge *hf = new myHalfedge();
-
-        ht->source = border[(i + 1) % n]->source;
-        ht->adjacent_face = nf;
-        ht->index = (int)halfedges.size();
-        halfedges.push_back(ht);
-
-        hf->source = cv;
-        hf->adjacent_face = nf;
-        hf->index = (int)halfedges.size();
-        halfedges.push_back(hf);
-
-        border[i]->adjacent_face = nf;
-        border[i]->next = ht; ht->prev = border[i];
-        ht->next = hf;        hf->prev = ht;
-        hf->next = border[i]; border[i]->prev = hf;
-
-        nf->adjacent_halfedge = border[i];
-        h_to[i] = ht;
-        h_from[i] = hf;
+        diag_in[k]  = new myHalfedge();
+        diag_out[k] = new myHalfedge();
+        diag_in[k]->source  = old_edges[k+2]->source;
+        diag_out[k]->source = old_edges[0]->source;
+        diag_in[k]->twin  = diag_out[k];
+        diag_out[k]->twin = diag_in[k];
+        halfedges.push_back(diag_in[k]);
+        halfedges.push_back(diag_out[k]);
     }
 
-    for (int i = 0; i < n; i++) {
-        h_from[i]->twin = h_to[(i - 1 + n) % n];
-        h_to[(i - 1 + n) % n]->twin = h_from[i];
-    }
+    for (int k = 0; k < n-2; k++)
+    {
+        myFace *nf;
+        if (k == 0)
+            nf = f;
+        else
+        {
+            nf = new myFace();
+            faces.push_back(nf);
+        }
 
-    cv->originof = h_from[0];
-    faces.erase(find(faces.begin(), faces.end(), f));
-    delete f;
+        myHalfedge *e0 = (k == 0)   ? old_edges[0]   : diag_out[k-1];
+        myHalfedge *e1 = old_edges[k+1];
+        myHalfedge *e2 = (k == n-3) ? old_edges[n-1] : diag_in[k];
+
+        nf->adjacent_halfedge = e0;
+        e0->next = e1; e0->prev = e2; e0->adjacent_face = nf;
+        e1->next = e2; e1->prev = e0; e1->adjacent_face = nf;
+        e2->next = e0; e2->prev = e1; e2->adjacent_face = nf;
+    }
 
     return true;
 }
-
