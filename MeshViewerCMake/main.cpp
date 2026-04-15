@@ -217,22 +217,26 @@ void display()
 	if (drawmeshvertices && vaos[VAO_VERTICES])
 	{
 		glPointSize(4.0);
-		color[0] = 0.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;		
+		color[0] = 0.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;
 		glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 1);
 
 		glBindVertexArray(vaos[VAO_VERTICES]);
 		glDrawElements(GL_POINTS, m->vertices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 0);
 	}
 
 	if (drawwireframe && vaos[VAO_EDGES])
 	{
 		glLineWidth(2.0);
-		color[0] = 0.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;		
-        glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+		color[0] = 0.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;
+		glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 1);
 		glBindVertexArray(vaos[VAO_EDGES]);
 		glDrawElements(GL_LINES, m->halfedges.size()*2, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 0);
 	}
 
 	if (drawsilhouette)

@@ -25,5 +25,8 @@ void main(void)
     float dotLN = max(dot(L, N), 0.0);
     vec3 color = kd.rgb * lightcolor * dotLN;
 
-    gl_FragColor = vec4(color, 1.0);
+    if (type == 1)
+        gl_FragColor = kd;  // flat color, no lighting (wireframe/vertices)
+    else
+        gl_FragColor = vec4(color, 1.0);
 }

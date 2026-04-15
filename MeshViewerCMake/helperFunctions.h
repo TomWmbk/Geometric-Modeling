@@ -677,6 +677,8 @@ GLuint initprogram(GLuint vertexshader, GLuint fragmentshader)
 	GLint linked;
 	glAttachShader(program, vertexshader);
 	glAttachShader(program, fragmentshader);
+	glBindAttribLocation(program, 0, "vertex_modelspace");
+	glBindAttribLocation(program, 1, "normal_modelspace");
 	glLinkProgram(program);
 	glGetProgramiv(program, GL_LINK_STATUS, &linked);
 	if (linked) glUseProgram(program);
