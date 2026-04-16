@@ -18,7 +18,11 @@ myVertex::~myVertex(void)
 
 void myVertex::computeNormal()
 {
+    if (!originof) return;
+
     double nx = 0, ny = 0, nz = 0;
+
+    // Forward traversal: turn around vertex CCW via twin->next
     myHalfedge *h = originof;
     do {
         if (h->adjacent_face && h->adjacent_face->normal)
@@ -30,6 +34,23 @@ void myVertex::computeNormal()
         if (!h->twin) break;
         h = h->twin->next;
     } while (h != originof);
+
+    // If we stopped early (open mesh boundary), traverse backwards too
+    if (h != originof)
+    {
+        h = originof;
+        while (h->prev && h->prev->twin)
+        {
+            h = h->prev->twin;
+            if (h == originof) break;
+            if (h->adjacent_face && h->adjacent_face->normal)
+            {
+                nx += h->adjacent_face->normal->dX;
+                ny += h->adjacent_face->normal->dY;
+                nz += h->adjacent_face->normal->dZ;
+            }
+        }
+    }
 
     normal->dX = nx;
     normal->dY = ny;

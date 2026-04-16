@@ -38,6 +38,7 @@ int GLUTmouse[2] = { 0, 0 };
 vector<GLuint> buffers(NUM_BUFFERS, 0);
 vector<GLuint> vaos(NUM_BUFFERS, 0);
 unsigned int num_triangles;
+unsigned int num_edge_verts;
 
 enum {
 	BUFFER_VERTICES = 0, BUFFER_NORMALS_PERFACE, BUFFER_NORMALS_PERVERTEX, BUFFER_VERTICESFORNORMALDRAWING,
@@ -47,11 +48,11 @@ enum { VAO_TRIANGLES_NORMSPERVERTEX = 0, VAO_TRIANGLES_NORMSPERFACE, VAO_EDGES, 
 
 
 bool smooth = false; //smooth = true means smooth normals, default false means face-wise normals.
-bool drawmesh = true;
+bool drawmesh = false;
 bool drawwireframe = true;
 bool drawmeshvertices = true;
 bool drawsilhouette = false;
-bool drawnormals = false;
+bool drawnormals = true;
 
 
 void makeBuffers(myMesh *input_mesh)
@@ -126,16 +127,24 @@ void makeBuffers(myMesh *input_mesh)
 		verts_and_normals.push_back((GLfloat)(input_mesh->vertices[i]->point->Z + input_mesh->vertices[i]->normal->dZ / 20.0f));
 	}
 
-	vector <GLuint> indices_edges;
-	for (unsigned int i = 0; i<input_mesh->halfedges.size(); i++)
+	// Store edge positions directly (avoids broken index-into-face-expanded-buffer).
+	vector <GLfloat> edge_verts;
+	for (unsigned int i = 0; i < input_mesh->halfedges.size(); i++)
 	{
-		if (input_mesh->halfedges[i] == NULL || input_mesh->halfedges[i]->next->next == NULL) continue;
-		indices_edges.push_back(input_mesh->halfedges[i]->source->index);
-		indices_edges.push_back(input_mesh->halfedges[i]->next->source->index);
+		if (input_mesh->halfedges[i] == NULL) continue;
+		myVertex *vs = input_mesh->halfedges[i]->source;
+		myVertex *vd = input_mesh->halfedges[i]->next->source;
+		edge_verts.push_back((GLfloat)vs->point->X);
+		edge_verts.push_back((GLfloat)vs->point->Y);
+		edge_verts.push_back((GLfloat)vs->point->Z);
+		edge_verts.push_back((GLfloat)vd->point->X);
+		edge_verts.push_back((GLfloat)vd->point->Y);
+		edge_verts.push_back((GLfloat)vd->point->Z);
 	}
+	num_edge_verts = (unsigned int)edge_verts.size() / 3;
 
 	vector <GLuint> indices_vertices;
-	for (unsigned int i = 0; i<input_mesh->vertices.size(); i++)
+	for (unsigned int i = 0; i < input_mesh->vertices.size(); i++)
 		indices_vertices.push_back(input_mesh->vertices[i]->index);
 
 
@@ -160,8 +169,8 @@ void makeBuffers(myMesh *input_mesh)
 	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICESFORNORMALDRAWING]);
 	glBufferData(GL_ARRAY_BUFFER, verts_and_normals.size() * sizeof(GLfloat), &verts_and_normals[0], GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[BUFFER_INDICES_EDGES]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_edges.size() * sizeof(GLuint), &indices_edges[0], GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_INDICES_EDGES]);
+	glBufferData(GL_ARRAY_BUFFER, edge_verts.size() * sizeof(GLfloat), &edge_verts[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[BUFFER_INDICES_VERTICES]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_vertices.size() * sizeof(GLuint), &indices_vertices[0], GL_STATIC_DRAW);
@@ -188,13 +197,9 @@ void makeBuffers(myMesh *input_mesh)
 	glBindVertexArray(0);
 
 	glBindVertexArray(vaos[VAO_EDGES]);
-	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_INDICES_EDGES]);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERVERTEX]);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[BUFFER_INDICES_EDGES]);
 	glBindVertexArray(0);
 
 	glBindVertexArray(vaos[VAO_VERTICES]);

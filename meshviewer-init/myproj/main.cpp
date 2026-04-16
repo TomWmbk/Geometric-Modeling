@@ -234,14 +234,42 @@ void display()
 		glBindVertexArray(0);
 	}
 
-	if (drawwireframe && vaos[VAO_EDGES])
+	if (drawwireframe)
 	{
-		glLineWidth(2.0);
-		color[0] = 0.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;		
-        glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
-		glBindVertexArray(vaos[VAO_EDGES]);
-		glDrawElements(GL_LINES, m->halfedges.size()*2, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
+		glUseProgram(0);
+
+		glm::mat4 proj = glm::perspective(glm::radians(fovy), (float)Glut_w/(float)Glut_h, zNear, zFar);
+		glm::mat4 view = glm::lookAt(
+			glm::vec3(camera_eye.X, camera_eye.Y, camera_eye.Z),
+			glm::vec3(camera_eye.X+camera_forward.dX, camera_eye.Y+camera_forward.dY, camera_eye.Z+camera_forward.dZ),
+			glm::vec3(camera_up.dX, camera_up.dY, camera_up.dZ));
+
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadMatrixf(glm::value_ptr(proj));
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadMatrixf(glm::value_ptr(view));
+
+		glLineWidth(1.5);
+		glColor3f(0.0f, 0.0f, 0.0f);
+		glBegin(GL_LINES);
+		for (unsigned int i = 0; i < m->halfedges.size(); i++)
+		{
+			if (m->halfedges[i] == NULL) continue;
+			myVertex *vs = m->halfedges[i]->source;
+			myVertex *vd = m->halfedges[i]->next->source;
+			glVertex3f((float)vs->point->X, (float)vs->point->Y, (float)vs->point->Z);
+			glVertex3f((float)vd->point->X, (float)vd->point->Y, (float)vd->point->Z);
+		}
+		glEnd();
+
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+
+		glUseProgram(shaderprogram);
 	}
 
 	if (drawsilhouette)

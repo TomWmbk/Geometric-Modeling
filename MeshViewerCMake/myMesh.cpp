@@ -148,38 +148,13 @@ bool myMesh::readFile(std::string filename)
 
 void myMesh::computeNormals()
 {
-	// Compute face normals
+	// Face normals first (vertex normals depend on them)
 	for (unsigned int i = 0; i < faces.size(); i++)
 		faces[i]->computeNormal();
 
-	// Compute vertex normals as average of adjacent face normals
+	// Vertex normals: average of adjacent face normals
 	for (unsigned int i = 0; i < vertices.size(); i++)
-	{
-		myVertex *v = vertices[i];
-		myHalfedge *start = v->originof;
-		if (!start)
-			continue;
-
-		double nx = 0, ny = 0, nz = 0;
-		myHalfedge *h = start;
-		do
-		{
-			if (h->adjacent_face && h->adjacent_face->normal)
-			{
-				nx += h->adjacent_face->normal->dX;
-				ny += h->adjacent_face->normal->dY;
-				nz += h->adjacent_face->normal->dZ;
-			}
-			if (!h->twin)
-				break;
-			h = h->twin->next;
-		} while (h != start);
-
-		v->normal->dX = nx;
-		v->normal->dY = ny;
-		v->normal->dZ = nz;
-		v->normal->normalize();
-	}
+		vertices[i]->computeNormal();
 }
 
 void myMesh::normalize()
@@ -273,50 +248,103 @@ void myMesh::triangulate()
 
 bool myMesh::triangulate(myFace *f)
 {
-    int n = 0;
-    myHalfedge *e = f->adjacent_halfedge;
-    do { n++; e = e->next; } while (e != f->adjacent_halfedge);
-    
-    if (n == 3) return false;
-    
-    vector<myHalfedge *> old_edges;
-    e = f->adjacent_halfedge;
-    for (int i = 0; i < n; i++) { old_edges.push_back(e); e = e->next; }
+	const double eps = 1e-10;
+	int n = 0;
+	myHalfedge *e = f->adjacent_halfedge;
+	do { n++; e = e->next; } while (e != f->adjacent_halfedge);
+	if (n == 3) return false;
 
-    int nd = n - 3;
-    vector<myHalfedge *> diag_in(nd), diag_out(nd);
-    for (int k = 0; k < nd; k++)
-    {
-        diag_in[k]  = new myHalfedge();
-        diag_out[k] = new myHalfedge();
-        diag_in[k]->source  = old_edges[k+2]->source;
-        diag_out[k]->source = old_edges[0]->source;
-        diag_in[k]->twin  = diag_out[k];
-        diag_out[k]->twin = diag_in[k];
-        halfedges.push_back(diag_in[k]);
-        halfedges.push_back(diag_out[k]);
-    }
+	vector<myHalfedge *> hedges(n);
+	vector<myVertex *> verts(n);
+	e = f->adjacent_halfedge;
+	for (int i = 0; i < n; i++) { hedges[i] = e; verts[i] = e->source; e = e->next; }
 
-    for (int k = 0; k < n-2; k++)
-    {
-        myFace *nf;
-        if (k == 0)
-            nf = f;
-        else
-        {
-            nf = new myFace();
-            faces.push_back(nf);
-        }
+	myVector3D faceN(0, 0, 0);
+	for (int i = 0; i < n; i++)
+	{
+		myPoint3D *a = verts[i]->point, *b = verts[(i + 1) % n]->point;
+		faceN.dX += (a->Y - b->Y) * (a->Z + b->Z);
+		faceN.dY += (a->Z - b->Z) * (a->X + b->X);
+		faceN.dZ += (a->X - b->X) * (a->Y + b->Y);
+	}
+	if (faceN.length() < eps) return false;
 
-        myHalfedge *e0 = (k == 0)   ? old_edges[0]   : diag_out[k-1];
-        myHalfedge *e1 = old_edges[k+1];
-        myHalfedge *e2 = (k == n-3) ? old_edges[n-1] : diag_in[k];
+	vector<int> nxt(n), prv(n);
+	for (int i = 0; i < n; i++) { nxt[i] = (i + 1) % n; prv[i] = (i - 1 + n) % n; }
 
-        nf->adjacent_halfedge = e0;
-        e0->next = e1; e0->prev = e2; e0->adjacent_face = nf;
-        e1->next = e2; e1->prev = e0; e1->adjacent_face = nf;
-        e2->next = e0; e2->prev = e1; e2->adjacent_face = nf;
-    }
+	int remaining = n;
+	int cur = 0;
+	while (remaining > 3)
+	{
+		bool found = false;
+		int startIdx = cur;
+		do
+		{
+			int p = prv[cur];
+			int nx = nxt[cur];
 
-    return true;
+			myVector3D v1 = *verts[cur]->point - *verts[p]->point;
+			myVector3D v2 = *verts[nx]->point - *verts[cur]->point;
+			if (v1.crossproduct(v2) * faceN > 0)
+			{
+				bool isEar = true;
+				int test = nxt[nx];
+				while (test != p)
+				{
+					myVector3D c0 = (*verts[cur]->point - *verts[p]->point).crossproduct(*verts[test]->point - *verts[p]->point);
+					myVector3D c1 = (*verts[nx]->point - *verts[cur]->point).crossproduct(*verts[test]->point - *verts[cur]->point);
+					myVector3D c2 = (*verts[p]->point - *verts[nx]->point).crossproduct(*verts[test]->point - *verts[nx]->point);
+					if (c0 * faceN > eps && c1 * faceN > eps && c2 * faceN > eps) { isEar = false; break; }
+					test = nxt[test];
+				}
+				if (isEar)
+				{
+					myHalfedge *d_in = new myHalfedge();
+					myHalfedge *d_out = new myHalfedge();
+					d_in->source = verts[nx];
+					d_out->source = verts[p];
+					d_in->twin = d_out;
+					d_out->twin = d_in;
+					halfedges.push_back(d_in);
+					halfedges.push_back(d_out);
+					myFace *nf = new myFace();
+					faces.push_back(nf);
+					nf->adjacent_halfedge = hedges[p];
+					hedges[p]->next = hedges[cur];
+					hedges[cur]->next = d_in;
+					d_in->next = hedges[p];
+					hedges[p]->prev = d_in;
+					hedges[cur]->prev = hedges[p];
+					d_in->prev = hedges[cur];
+					hedges[p]->adjacent_face = nf;
+					hedges[cur]->adjacent_face = nf;
+					d_in->adjacent_face = nf;
+					hedges[p] = d_out;
+					nxt[p] = nx;
+					prv[nx] = p;
+					remaining--;
+					cur = nx;
+					found = true;
+					break;
+				}
+			}
+			cur = nxt[cur];
+		} while (cur != startIdx);
+		if (!found) break;
+	}
+
+	int i0 = cur;
+	int i1 = nxt[i0];
+	int i2 = nxt[i1];
+	f->adjacent_halfedge = hedges[i0];
+	hedges[i0]->next = hedges[i1];
+	hedges[i1]->next = hedges[i2];
+	hedges[i2]->next = hedges[i0];
+	hedges[i0]->prev = hedges[i2];
+	hedges[i1]->prev = hedges[i0];
+	hedges[i2]->prev = hedges[i1];
+	hedges[i0]->adjacent_face = f;
+	hedges[i1]->adjacent_face = f;
+	hedges[i2]->adjacent_face = f;
+	return true;
 }
