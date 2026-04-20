@@ -348,13 +348,25 @@ bool myMesh::triangulate(myFace *f)
 }
 
 void myMesh::surfaceOfRevolution(){
-	int N;
-	int M;
-	float v_x;
-	float v_y;
-	for(int i =0; i<N; i++){
-		for(int y=0; y<M; i++){
-
+    vector<pair<float,float>> curve = {
+        {0.0f, -1.0f},
+        {0.5f, -0.5f},
+        {0.8f,  0.0f},
+        {0.5f,  0.5f},
+        {0.0f,  1.0f}
+    };
+	int n = curve.size();
+	int m;
+	for(int i=0; i<n; i++){
+		float r = curve[i].first;
+		float y = curve[i].second;
+		for(int y = 0; y<m; y++){
+			float theta= 2.0f*M_PI*y/m;
+			myPoint3D *p = new myPoint3D(r*cos(theta), y, r*sin(theta));
+			myVertex *v = new myVertex;
+			v->point = p;
+			vertices.push_back(v);
 		}
 	}
+
 }
