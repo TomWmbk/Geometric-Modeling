@@ -398,8 +398,9 @@ void initMesh()
 	
 	cout << "Reading mesh from file...\n";
 	m = new myMesh();
-	if (m->readFile("gear.obj")) {
+	if (m->readFile("curve.obj")) {
 		m->computeNormals();
+		m->surfaceOfRevolution();
 		makeBuffers(m);
 	}
 }

@@ -368,5 +368,5 @@ void myMesh::surfaceOfRevolution(){
 			vertices.push_back(v);
 		}
 	}
-
+	
 }
