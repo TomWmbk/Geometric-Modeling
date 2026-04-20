@@ -29,6 +29,7 @@ public:
 	bool triangulate(myFace *);
 	void simplify();
 	void simplify(myVertex *);
+	void surfaceOfRevolution();
 
 	void clear();
 

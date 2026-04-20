@@ -148,11 +148,9 @@ bool myMesh::readFile(std::string filename)
 
 void myMesh::computeNormals()
 {
-	// Face normals first (vertex normals depend on them)
 	for (unsigned int i = 0; i < faces.size(); i++)
 		faces[i]->computeNormal();
 
-	// Vertex normals: average of adjacent face normals
 	for (unsigned int i = 0; i < vertices.size(); i++)
 		vertices[i]->computeNormal();
 }
@@ -347,4 +345,16 @@ bool myMesh::triangulate(myFace *f)
 	hedges[i1]->adjacent_face = f;
 	hedges[i2]->adjacent_face = f;
 	return true;
+}
+
+void myMesh::surfaceOfRevolution(){
+	int N;
+	int M;
+	float v_x;
+	float v_y;
+	for(int i =0; i<N; i++){
+		for(int y=0; y<M; i++){
+
+		}
+	}
 }

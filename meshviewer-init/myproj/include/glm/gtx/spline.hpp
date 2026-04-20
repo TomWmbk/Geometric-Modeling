@@ -39,7 +39,7 @@ namespace glm
 	/// @see gtx_spline extension.
 	template <typename genType> 
 	GLM_FUNC_DECL genType hermite(
-		genType const & v1, 
+		genType const & v1,
 		genType const & t1, 
 		genType const & v2, 
 		genType const & t2, 
