@@ -159,6 +159,13 @@ void menu(int item)
 			m->simplify();
 			break;
 	 	}
+	case MENU_GENERATE:
+		{
+			m->clear();
+			m->surfaceOfRevolution();
+			makeBuffers(m);
+			break;
+		}
 	}
 	glutPostRedisplay();
 }
@@ -396,13 +403,7 @@ void initMesh()
 	closest_vertex = NULL;
 	closest_face = NULL;
 	
-	cout << "Reading mesh from file...\n";
 	m = new myMesh();
-	if (m->readFile("curve.obj")) {
-		m->computeNormals();
-		m->surfaceOfRevolution();
-		makeBuffers(m);
-	}
 }
 
 

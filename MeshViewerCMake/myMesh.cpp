@@ -411,7 +411,7 @@ void myMesh::testHalfedges()
     cout << "[testHalfedges] done. checked=" << halfedges.size() << " errors=" << errors << "\n";
 }
 
-void myMesh::surfaceOfRevolution(){
+void myMesh::surfaceOfRevolution() {
     vector<pair<float,float>> curve = {
         {0.0f, -1.0f},
         {0.5f, -0.5f},
@@ -419,20 +419,81 @@ void myMesh::surfaceOfRevolution(){
         {0.5f,  0.5f},
         {0.0f,  1.0f}
     };
-	int n = curve.size();
-	int m;
-	for(int i=0; i<n; i++){
-		float r = curve[i].first;
-		float y = curve[i].second;
-		for(int y = 0; y<m; y++){
-			float theta= 2.0f*M_PI*y/m;
-			myPoint3D *p = new myPoint3D(r*cos(theta), y, r*sin(theta));
-			myVertex *v = new myVertex;
-			v->point = p;
-			vertices.push_back(v);
-		}
-	}
-	vector<pair<int, int>, myHalfedge*> twin_map = {
-		
-	}
+
+    int n = curve.size();
+    int m = 20;
+
+    // index[i] = premier vertex de la rangée i (-1 si pôle = vertex unique)
+    vector<int> rowStart(n);
+
+    for (int i = 0; i < n; i++) {
+        float r = curve[i].first;
+        float y = curve[i].second;
+        rowStart[i] = (int)vertices.size();
+        if (r == 0.0f) {
+            // pôle : un seul sommet
+            myVertex *v = new myVertex();
+            v->point = new myPoint3D(0.0f, y, 0.0f);
+            vertices.push_back(v);
+        } else {
+            for (int j = 0; j < m; j++) {
+                float theta = 2.0f * M_PI * j / m;
+                myVertex *v = new myVertex();
+                v->point = new myPoint3D(r * cos(theta), y, r * sin(theta));
+                vertices.push_back(v);
+            }
+        }
+    }
+
+    map<pair<int,int>, myHalfedge*> twin_map;
+
+    auto addTriangle = [&](int a, int b, int c) {
+        if (a == b || b == c || a == c) return; // dégénéré
+        int ids[3] = {a, b, c};
+        myFace *f = new myFace();
+        faces.push_back(f);
+        myHalfedge *hes[3];
+        for (int k = 0; k < 3; k++) {
+            myHalfedge *he = new myHalfedge();
+            he->source = vertices[ids[k]];
+            he->adjacent_face = f;
+            if (vertices[ids[k]]->originof == NULL)
+                vertices[ids[k]]->originof = he;
+            halfedges.push_back(he);
+            hes[k] = he;
+        }
+        f->adjacent_halfedge = hes[0];
+        for (int k = 0; k < 3; k++) {
+            hes[k]->next = hes[(k+1)%3];
+            hes[k]->prev = hes[(k-1+3)%3];
+            twin_map[{ids[k], ids[(k+1)%3]}] = hes[k];
+        }
+    };
+
+    auto vertIdx = [&](int row, int j) -> int {
+        if (curve[row].first == 0.0f) return rowStart[row]; // pôle unique
+        return rowStart[row] + j % m;
+    };
+
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < m; j++) {
+            int a = vertIdx(i,   j);
+            int b = vertIdx(i,   j+1);
+            int c = vertIdx(i+1, j);
+            int d = vertIdx(i+1, j+1);
+            addTriangle(a, d, b);
+            addTriangle(a, c, d);
+        }
+    }
+
+    for (auto &kv : twin_map) {
+        auto it = twin_map.find({kv.first.second, kv.first.first});
+        if (it != twin_map.end()) {
+            kv.second->twin = it->second;
+            it->second->twin = kv.second;
+        }
+    }
+
+    normalize();
+    computeNormals();
 }

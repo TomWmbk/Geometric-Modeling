@@ -81,6 +81,7 @@ double myVector3D::length( )
 void myVector3D::normalize( )
 {
     double l = length();
+    if (l < 1e-9) return;
     dX = dX/l;
     dY = dY/l;
     dZ = dZ/l;
