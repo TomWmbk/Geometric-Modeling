@@ -347,6 +347,70 @@ bool myMesh::triangulate(myFace *f)
 	return true;
 }
 
+void myMesh::testTriangulation()
+{
+    unsigned int nontri = 0;
+    for (unsigned int i = 0; i < faces.size(); ++i) {
+        myFace *f = faces[i];
+        if (!f || !f->adjacent_halfedge) { ++nontri; continue; }
+        myHalfedge *h = f->adjacent_halfedge;
+        unsigned int cnt = 0;
+        myHalfedge *cur = h;
+        do {
+            if (!cur) break;
+            ++cnt;
+            cur = cur->next;
+            if (cnt > 10000) break;
+        } while (cur != h);
+        if (cnt != 3) ++nontri;
+    }
+    cout << "[testTriangulation] nontriangular_faces=" << nontri << " total_faces=" << faces.size() << "\n";
+}
+
+void myMesh::testNormals()
+{
+    unsigned int faceBad = 0, vertBad = 0;
+    for (unsigned int i = 0; i < faces.size(); ++i) {
+        myFace *f = faces[i];
+        if (!f || !f->normal) { ++faceBad; continue; }
+        double L = f->normal->length();
+        if (!(L > 1e-9)) { ++faceBad; }
+    }
+    for (unsigned int i = 0; i < vertices.size(); ++i) {
+        myVertex *v = vertices[i];
+        if (!v || !v->normal) { ++vertBad; continue; }
+        double L = v->normal->length();
+        if (!(L > 1e-9)) { ++vertBad; }
+    }
+    cout << "[testNormals] faces_bad=" << faceBad << " verts_bad=" << vertBad << "\n";
+}
+
+void myMesh::testHalfedges()
+{
+    unsigned int errors = 0;
+    for (unsigned int i = 0; i < halfedges.size(); ++i) {
+        myHalfedge *h = halfedges[i];
+        if (!h) { ++errors; continue; }
+        if (h->next == NULL || h->prev == NULL || h->source == NULL) {
+            cout << "[testHalfedges] invalid halfedge at index " << i << "\n";
+            ++errors; continue;
+        }
+        if (h->next->prev != h) {
+            cout << "[testHalfedges] next->prev mismatch at halfedge " << i << "\n";
+            ++errors;
+        }
+        if (h->prev->next != h) {
+            cout << "[testHalfedges] prev->next mismatch at halfedge " << i << "\n";
+            ++errors;
+        }
+        if (h->twin && h->twin->twin != h) {
+            cout << "[testHalfedges] twin mismatch at halfedge " << i << "\n";
+            ++errors;
+        }
+    }
+    cout << "[testHalfedges] done. checked=" << halfedges.size() << " errors=" << errors << "\n";
+}
+
 void myMesh::surfaceOfRevolution(){
     vector<pair<float,float>> curve = {
         {0.0f, -1.0f},
@@ -368,5 +432,7 @@ void myMesh::surfaceOfRevolution(){
 			vertices.push_back(v);
 		}
 	}
-	
+	vector<pair<int, int>, myHalfedge*> twin_map = {
+		
+	}
 }

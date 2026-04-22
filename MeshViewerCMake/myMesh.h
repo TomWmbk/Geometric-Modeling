@@ -33,6 +33,10 @@ public:
 
 	void clear();
 
+	void testTriangulation();
+	void testNormals();
+	void testHalfedges();
+
 	myMesh(void);
 	~myMesh(void);
 };
