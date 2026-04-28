@@ -399,7 +399,7 @@ void initMesh()
 	closest_face = NULL;
 
 	m = new myMesh();
-	if (m->readFile("dolphin.obj")) {
+	if (m->readFile("apple.obj")) {
 		m->computeNormals();
 		makeBuffers(m);
 	}
