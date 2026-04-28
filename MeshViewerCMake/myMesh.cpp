@@ -222,12 +222,38 @@ void myMesh::subdivisionCatmullClark()
 
 void myMesh::simplify()
 {
-	/**** TODO ****/
+	if (vertices.size() >= 4){
+		simplify(vertices[0]);
+	}
 }
 
-void myMesh::simplify(myVertex *)
+void myMesh::simplify(myVertex *vx)
 {
-	/**** TODO ****/
+	myHalfedge *e = vx->originof;
+	if(!e->twin){
+		return;
+	}
+	myVertex *vn = e->next->source;
+
+	vx->point->X = (vx->point->X + vn->point->X)/2.0f;
+	vx->point->Y = (vx->point->Y + vn->point->Y)/2.0f;
+	vx->point->Z = (vx->point->Z + vn->point->Z)/2.0f;
+
+	myHalfedge *he = e->twin;
+	do{
+		he->source = vx;
+		he = he->twin->next;
+	}while(he != e->twin);
+
+	e->prev->twin->twin = e->next->twin;
+	e->next->twin->twin = e->prev->twin;
+
+	e->twin->prev->twin->twin = e->twin->next->twin;
+	e->twin->next->twin->twin = e->twin->prev->twin;
+
+	vx->originof = e->twin->next->twin;
+
+	
 }
 
 void myMesh::triangulate()
@@ -423,7 +449,6 @@ void myMesh::surfaceOfRevolution() {
     int n = curve.size();
     int m = 20;
 
-    // index[i] = premier vertex de la rangée i (-1 si pôle = vertex unique)
     vector<int> rowStart(n);
 
     for (int i = 0; i < n; i++) {
@@ -431,7 +456,6 @@ void myMesh::surfaceOfRevolution() {
         float y = curve[i].second;
         rowStart[i] = (int)vertices.size();
         if (r == 0.0f) {
-            // pôle : un seul sommet
             myVertex *v = new myVertex();
             v->point = new myPoint3D(0.0f, y, 0.0f);
             vertices.push_back(v);
@@ -448,7 +472,7 @@ void myMesh::surfaceOfRevolution() {
     map<pair<int,int>, myHalfedge*> twin_map;
 
     auto addTriangle = [&](int a, int b, int c) {
-        if (a == b || b == c || a == c) return; // dégénéré
+        if (a == b || b == c || a == c) return; 
         int ids[3] = {a, b, c};
         myFace *f = new myFace();
         faces.push_back(f);
@@ -471,7 +495,7 @@ void myMesh::surfaceOfRevolution() {
     };
 
     auto vertIdx = [&](int row, int j) -> int {
-        if (curve[row].first == 0.0f) return rowStart[row]; // pôle unique
+        if (curve[row].first == 0.0f) return rowStart[row]; 
         return rowStart[row] + j % m;
     };
 
@@ -495,5 +519,4 @@ void myMesh::surfaceOfRevolution() {
     }
 
     normalize();
-    computeNormals();
 }

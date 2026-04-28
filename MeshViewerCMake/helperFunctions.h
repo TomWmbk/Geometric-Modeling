@@ -47,12 +47,12 @@ enum {
 enum { VAO_TRIANGLES_NORMSPERVERTEX = 0, VAO_TRIANGLES_NORMSPERFACE, VAO_EDGES, VAO_VERTICES, VAO_NORMALS };
 
 
-bool smooth = false; //smooth = true means smooth normals, default false means face-wise normals.
+bool smooth = false;
 bool drawmesh = false;
-bool drawwireframe = true;
-bool drawmeshvertices = true;
+bool drawwireframe = false;
+bool drawmeshvertices = false;
 bool drawsilhouette = false;
-bool drawnormals = true;
+bool drawnormals = false;
 
 
 void makeBuffers(myMesh *input_mesh)

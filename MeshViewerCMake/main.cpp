@@ -38,134 +38,73 @@ void clear()
 	pickedpoint = NULL;
 }
 
+void refresh()
+{
+	m->computeNormals();
+	makeBuffers(m);
+}
+
 void menu(int item)
 {
 	switch(item)
 	{
+	case MENU_GENERATE:
+		m->clear(); m->surfaceOfRevolution(); refresh(); break;
 	case MENU_TRIANGULATE:
-		{
-			m->triangulate();
-			m->computeNormals();
-			makeBuffers(m);
-			break;
-		}
+		m->triangulate(); refresh(); break;
+	case MENU_CATMULLCLARK:
+		m->subdivisionCatmullClark(); refresh(); break;
+	case MENU_SPLITEDGE:
+		if (pickedpoint && closest_edge) m->splitEdge(closest_edge, pickedpoint);
+		clear(); refresh(); break;
+	case MENU_SPLITFACE:
+		if (pickedpoint && closest_face) m->splitFaceTRIS(closest_face, pickedpoint);
+		clear(); refresh(); break;
+	case MENU_INFLATE:
+		for (auto v : m->vertices) *(v->point) = *(v->point) + *(v->normal) * 0.01;
+		refresh(); break;
+	case MENU_SIMPLIFY:
+		m->simplify(); break;
 	case MENU_SHADINGTYPE:
-		{
-			smooth = !smooth;
-			break;
-		}
+		smooth = !smooth; break;
 	case MENU_DRAWMESH:
-		{
-			drawmesh = !drawmesh;
-			break;
-		}
-	case MENU_DRAWMESHVERTICES:
-		{
-			drawmeshvertices = !drawmeshvertices;
-			break;
-		}
+		drawmesh = !drawmesh; break;
 	case MENU_DRAWWIREFRAME:
-		{
-			drawwireframe = !drawwireframe;
-			break;
-		}
+		drawwireframe = !drawwireframe; break;
+	case MENU_DRAWMESHVERTICES:
+		drawmeshvertices = !drawmeshvertices; break;
 	case MENU_DRAWNORMALS:
-		{
-			drawnormals = !drawnormals;
-			break;
-		}
+		drawnormals = !drawnormals; break;
 	case MENU_DRAWSILHOUETTE:
-		{
-			drawsilhouette = !drawsilhouette;
-			break;
-		}
+		drawsilhouette = !drawsilhouette; break;
 	case MENU_SELECTCLEAR:
-		{
-			clear();
-			break;
-		}
+		clear(); break;
 	case MENU_SELECTEDGE:
 		{
-			if (pickedpoint == NULL) break;
-			closest_edge = (*m->halfedges.begin());
+			if (!pickedpoint) break;
 			double min = std::numeric_limits<double>::max();
-			for (vector<myHalfedge *>::iterator it = m->halfedges.begin(); it != m->halfedges.end(); it++)
-			{
-				myHalfedge *e = (*it);
-				myVertex *v1 = (*it)->source;
-				if ((*it)->twin == NULL) continue;
-				myVertex *v2 = (*it)->twin->source;
-
-				double d = pickedpoint->dist(v1->point, v2->point);
-				if (d < min) { min = d; closest_edge = e; } 
+			for (auto h : m->halfedges) {
+				if (!h->twin) continue;
+				double d = pickedpoint->dist(h->source->point, h->twin->source->point);
+				if (d < min) { min = d; closest_edge = h; }
 			}
 			break;
 		}
 	case MENU_SELECTVERTEX:
 		{
-			if (pickedpoint == NULL) break;
-			closest_vertex = (*m->vertices.begin());
+			if (!pickedpoint) break;
 			double min = std::numeric_limits<double>::max();
-			for (vector<myVertex *>::iterator it = m->vertices.begin(); it != m->vertices.end(); it++)
-			{
-				double d = pickedpoint->dist(*( (*it)->point ));
-				if (d<min) { min = d; closest_vertex = *it; }
+			for (auto v : m->vertices) {
+				double d = pickedpoint->dist(*(v->point));
+				if (d < min) { min = d; closest_vertex = v; }
 			}
 			break;
 		}
-	case MENU_INFLATE:
-		{
-			for (vector<myVertex *>::iterator it = m->vertices.begin(); it != m->vertices.end(); it++)
-				*((*it)->point) = *((*it)->point) + *((*it)->normal)*0.01;
-			makeBuffers(m);
-			break;
-	}
-	case MENU_CATMULLCLARK:
-		{
-			m->subdivisionCatmullClark();
-			clear();
-			m->computeNormals();
-			makeBuffers(m);
-			break;
-		}
-	case MENU_SPLITEDGE:
-		{
-			if (pickedpoint != NULL && closest_edge != NULL)	
-				m->splitEdge(closest_edge, pickedpoint);
-			clear();
-			m->computeNormals();
-			makeBuffers(m);
-			break;
-		}		
-	case MENU_SPLITFACE:
-		{
-			if (pickedpoint != NULL && closest_face != NULL)	
-				m->splitFaceTRIS(closest_face, pickedpoint);
-			clear();		
-			m->computeNormals();
-			makeBuffers(m);
-			break;
-		}
 	case MENU_EXIT:
-		{
-			m->clear();
-			glDeleteBuffers(10, &buffers[0]);
-			glDeleteVertexArrays(10, &vaos[0]);
-			exit(0);
-			break;
-		}
-	case MENU_SIMPLIFY:
-	 	{
-			m->simplify();
-			break;
-	 	}
-	case MENU_GENERATE:
-		{
-			m->clear();
-			m->surfaceOfRevolution();
-			makeBuffers(m);
-			break;
-		}
+		m->clear();
+		glDeleteBuffers(10, &buffers[0]);
+		glDeleteVertexArrays(10, &vaos[0]);
+		exit(0);
 	}
 	glutPostRedisplay();
 }
