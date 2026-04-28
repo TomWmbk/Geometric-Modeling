@@ -229,31 +229,47 @@ void myMesh::simplify()
 
 void myMesh::simplify(myVertex *vx)
 {
-	myHalfedge *e = vx->originof;
-	if(!e->twin){
-		return;
-	}
-	myVertex *vn = e->next->source;
+    myHalfedge *e = vx->originof;
+    if (!e || !e->twin) return;
 
-	vx->point->X = (vx->point->X + vn->point->X)/2.0f;
-	vx->point->Y = (vx->point->Y + vn->point->Y)/2.0f;
-	vx->point->Z = (vx->point->Z + vn->point->Z)/2.0f;
+    myHalfedge *et      = e->twin;
+    myHalfedge *e_next  = e->next;
+    myHalfedge *e_prev  = e->prev;
+    myHalfedge *en_next = et->next;
+    myHalfedge *en_prev = et->prev;
+    myFace     *f1      = e->adjacent_face;
+    myFace     *f2      = et->adjacent_face;
+    myVertex   *vn      = e_next->source;
 
-	myHalfedge *he = e->twin;
-	do{
-		he->source = vx;
-		he = he->twin->next;
-	}while(he != e->twin);
+    // Midpoint
+    vx->point->X = (vx->point->X + vn->point->X) / 2.0f;
+    vx->point->Y = (vx->point->Y + vn->point->Y) / 2.0f;
+    vx->point->Z = (vx->point->Z + vn->point->Z) / 2.0f;
 
-	e->prev->twin->twin = e->next->twin;
-	e->next->twin->twin = e->prev->twin;
+    // Recâbler source de vn vers vx
+    myHalfedge *he = et;
+    do {
+        he->source = vx;
+        he = he->twin->next;
+    } while (he != et);
 
-	e->twin->prev->twin->twin = e->twin->next->twin;
-	e->twin->next->twin->twin = e->twin->prev->twin;
+    // Recâbler twins extérieurs
+    e_prev->twin->twin  = e_next->twin;
+    e_next->twin->twin  = e_prev->twin;
+    en_prev->twin->twin = en_next->twin;
+    en_next->twin->twin = en_prev->twin;
 
-	vx->originof = e->twin->next->twin;
+    vx->originof = en_next->twin;
 
-	
+    faces.erase(remove(faces.begin(), faces.end(), f1), faces.end());
+    faces.erase(remove(faces.begin(), faces.end(), f2), faces.end());
+    halfedges.erase(remove(halfedges.begin(), halfedges.end(), e),      halfedges.end());
+    halfedges.erase(remove(halfedges.begin(), halfedges.end(), et),     halfedges.end());
+    halfedges.erase(remove(halfedges.begin(), halfedges.end(), e_next), halfedges.end());
+    halfedges.erase(remove(halfedges.begin(), halfedges.end(), e_prev), halfedges.end());
+    halfedges.erase(remove(halfedges.begin(), halfedges.end(), en_next),halfedges.end());
+    halfedges.erase(remove(halfedges.begin(), halfedges.end(), en_prev),halfedges.end());
+    vertices.erase(remove(vertices.begin(), vertices.end(), vn), vertices.end());
 }
 
 void myMesh::triangulate()
