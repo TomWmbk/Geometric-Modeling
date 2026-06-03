@@ -36,6 +36,16 @@ namespace
 	{
 		return find(items.begin(), items.end(), item) != items.end();
 	}
+
+	void removeHalfedge(vector<myHalfedge *> &halfedges, myHalfedge *he)
+	{
+		halfedges.erase(remove(halfedges.begin(), halfedges.end(), he), halfedges.end());
+	}
+
+	void removeFace(vector<myFace *> &faces, myFace *face)
+	{
+		faces.erase(remove(faces.begin(), faces.end(), face), faces.end());
+	}
 }
 
 myMesh::myMesh(void)
@@ -254,23 +264,28 @@ void myMesh::simplify()
 	if (faces.size() == 0)
 		return;
 
-	// This collapse implementation works on triangular meshes.
-	triangulate();
-
-	for (unsigned int i = 0; i < halfedges.size(); i++)
+	for (int attempt = 0; attempt < 2; attempt++)
 	{
-		myHalfedge *e = halfedges[i];
-		if (!e || !e->twin || !e->next || !e->prev)
-			continue;
-		if (faceDegree(e->adjacent_face) != 3 || faceDegree(e->twin->adjacent_face) != 3)
-			continue;
-
 		unsigned int oldVertexCount = (unsigned int)vertices.size();
-		e->source->originof = e;
-		simplify(e->source);
-		if (vertices.size() < oldVertexCount)
-			return;
+		for (unsigned int i = 0; i < halfedges.size(); i++)
+		{
+			myHalfedge *e = halfedges[i];
+			if (!e || !e->twin || !e->next || !e->prev)
+				continue;
+			if (faceDegree(e->adjacent_face) != 3 || faceDegree(e->twin->adjacent_face) != 3)
+				continue;
+
+			e->source->originof = e;
+			simplify(e->source);
+			if (vertices.size() < oldVertexCount)
+				return;
+		}
+
+		if (attempt == 0)
+			triangulate();
 	}
+
+	cout << "No valid edge collapse found.\n";
 }
 
 void myMesh::simplify(myVertex *vx)
@@ -302,6 +317,14 @@ void myMesh::simplify(myVertex *vx)
 	if (!v0 || !v1 || !v2 || !v3 || v0 == v1 || v2 == v3)
 		return;
 
+	vector<myHalfedge *> removedHalfedges;
+	removedHalfedges.push_back(e);
+	removedHalfedges.push_back(et);
+	removedHalfedges.push_back(e_next);
+	removedHalfedges.push_back(e_prev);
+	removedHalfedges.push_back(et_next);
+	removedHalfedges.push_back(et_prev);
+
 	// Link condition: avoid creating a non-manifold vertex after the collapse.
 	set<myVertex *> n0, n1;
 	for (unsigned int i = 0; i < halfedges.size(); i++)
@@ -326,17 +349,35 @@ void myMesh::simplify(myVertex *vx)
 	if (commonNeighbours != 2)
 		return;
 
+	// A remaining face containing both vertices would become degenerate.
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		myFace *f = faces[i];
+		if (!f || f == f1 || f == f2)
+			continue;
+
+		bool hasV0 = false;
+		bool hasV1 = false;
+		myHalfedge *start = f->adjacent_halfedge;
+		myHalfedge *he = start;
+		do
+		{
+			if (!he)
+				break;
+			if (he->source == v0)
+				hasV0 = true;
+			if (he->source == v1)
+				hasV1 = true;
+			he = he->next;
+		} while (he != start);
+
+		if (hasV0 && hasV1)
+			return;
+	}
+
 	v0->point->X = (v0->point->X + v1->point->X) / 2.0;
 	v0->point->Y = (v0->point->Y + v1->point->Y) / 2.0;
 	v0->point->Z = (v0->point->Z + v1->point->Z) / 2.0;
-
-	vector<myHalfedge *> removedHalfedges;
-	removedHalfedges.push_back(e);
-	removedHalfedges.push_back(et);
-	removedHalfedges.push_back(e_next);
-	removedHalfedges.push_back(e_prev);
-	removedHalfedges.push_back(et_next);
-	removedHalfedges.push_back(et_prev);
 
 	// Every remaining halfedge that started from v1 now starts from v0.
 	for (unsigned int i = 0; i < halfedges.size(); i++)
@@ -352,19 +393,10 @@ void myMesh::simplify(myVertex *vx)
 	et_prev->twin->twin = et_next->twin;
 	et_next->twin->twin = et_prev->twin;
 
-	for (unsigned int i = 0; i < faces.size(); i++)
-		if (faces[i] != f1 && faces[i] != f2 && faces[i]->adjacent_halfedge &&
-			isInVector(removedHalfedges, faces[i]->adjacent_halfedge))
-			faces[i]->adjacent_halfedge = faces[i]->adjacent_halfedge->next;
-
-	halfedges.erase(remove(halfedges.begin(), halfedges.end(), e), halfedges.end());
-	halfedges.erase(remove(halfedges.begin(), halfedges.end(), et), halfedges.end());
-	halfedges.erase(remove(halfedges.begin(), halfedges.end(), e_next), halfedges.end());
-	halfedges.erase(remove(halfedges.begin(), halfedges.end(), e_prev), halfedges.end());
-	halfedges.erase(remove(halfedges.begin(), halfedges.end(), et_next), halfedges.end());
-	halfedges.erase(remove(halfedges.begin(), halfedges.end(), et_prev), halfedges.end());
-	faces.erase(remove(faces.begin(), faces.end(), f1), faces.end());
-	faces.erase(remove(faces.begin(), faces.end(), f2), faces.end());
+	for (unsigned int i = 0; i < removedHalfedges.size(); i++)
+		removeHalfedge(halfedges, removedHalfedges[i]);
+	removeFace(faces, f1);
+	removeFace(faces, f2);
 	vertices.erase(remove(vertices.begin(), vertices.end(), v1), vertices.end());
 
 	for (unsigned int i = 0; i < vertices.size(); i++)
@@ -388,16 +420,102 @@ void myMesh::simplify(myVertex *vx)
 
 void myMesh::triangulate()
 {
-    vector<myFace *> todo;
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-        int n = 0;
-        myHalfedge *he = faces[i]->adjacent_halfedge;
-        do { n++; he = he->next; } while (he != faces[i]->adjacent_halfedge);
-        if (n > 3) todo.push_back(faces[i]);
-    }
-    for (unsigned int i = 0; i < todo.size(); i++)
-        triangulate(todo[i]);
+	vector<vector<myVertex *> > triangles;
+
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		myFace *f = faces[i];
+		if (!f || !f->adjacent_halfedge)
+			continue;
+
+		vector<myVertex *> faceVertices;
+		myHalfedge *start = f->adjacent_halfedge;
+		myHalfedge *he = start;
+		do
+		{
+			if (!he || !he->source)
+				break;
+			faceVertices.push_back(he->source);
+			he = he->next;
+		} while (he && he != start && faceVertices.size() <= 10000);
+
+		if (faceVertices.size() < 3)
+			continue;
+
+		for (unsigned int j = 1; j + 1 < faceVertices.size(); j++)
+		{
+			if (faceVertices[0] == faceVertices[j] ||
+				faceVertices[j] == faceVertices[j + 1] ||
+				faceVertices[j + 1] == faceVertices[0])
+				continue;
+
+			vector<myVertex *> tri;
+			tri.push_back(faceVertices[0]);
+			tri.push_back(faceVertices[j]);
+			tri.push_back(faceVertices[j + 1]);
+			triangles.push_back(tri);
+		}
+	}
+
+	for (unsigned int i = 0; i < halfedges.size(); i++)
+		delete halfedges[i];
+	for (unsigned int i = 0; i < faces.size(); i++)
+		delete faces[i];
+
+	halfedges.clear();
+	faces.clear();
+	for (unsigned int i = 0; i < vertices.size(); i++)
+		vertices[i]->originof = NULL;
+
+	map<pair<myVertex *, myVertex *>, myHalfedge *> twinMap;
+
+	for (unsigned int i = 0; i < triangles.size(); i++)
+	{
+		myFace *f = new myFace();
+		myHalfedge *h0 = new myHalfedge();
+		myHalfedge *h1 = new myHalfedge();
+		myHalfedge *h2 = new myHalfedge();
+
+		h0->source = triangles[i][0];
+		h1->source = triangles[i][1];
+		h2->source = triangles[i][2];
+
+		h0->next = h1; h1->next = h2; h2->next = h0;
+		h0->prev = h2; h1->prev = h0; h2->prev = h1;
+
+		h0->adjacent_face = f;
+		h1->adjacent_face = f;
+		h2->adjacent_face = f;
+		f->adjacent_halfedge = h0;
+
+		faces.push_back(f);
+		halfedges.push_back(h0);
+		halfedges.push_back(h1);
+		halfedges.push_back(h2);
+
+		if (!h0->source->originof) h0->source->originof = h0;
+		if (!h1->source->originof) h1->source->originof = h1;
+		if (!h2->source->originof) h2->source->originof = h2;
+
+		myHalfedge *hs[3] = { h0, h1, h2 };
+		for (int k = 0; k < 3; k++)
+		{
+			myVertex *src = hs[k]->source;
+			myVertex *dst = hs[k]->next->source;
+			map<pair<myVertex *, myVertex *>, myHalfedge *>::iterator twinIt =
+				twinMap.find(make_pair(dst, src));
+
+			if (twinIt != twinMap.end())
+			{
+				hs[k]->twin = twinIt->second;
+				twinIt->second->twin = hs[k];
+			}
+			else
+			{
+				twinMap[make_pair(src, dst)] = hs[k];
+			}
+		}
+	}
 }
 
 bool myMesh::triangulate(myFace *f)

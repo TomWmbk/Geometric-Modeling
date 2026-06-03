@@ -44,6 +44,38 @@ void refresh()
 	makeBuffers(m);
 }
 
+bool loadMeshFile(const string &filename)
+{
+	m->clear();
+	if (!m->readFile(filename))
+		return false;
+
+	refresh();
+	drawmesh = true;
+	return true;
+}
+
+void loadDefaultMesh()
+{
+	if (loadMeshFile("dolphin.obj"))
+		return;
+	if (loadMeshFile("../dolphin.obj"))
+		return;
+	if (loadMeshFile("MeshViewerCMake/dolphin.obj"))
+		return;
+	if (loadMeshFile("cube.obj"))
+		return;
+	if (loadMeshFile("../cube.obj"))
+		return;
+	if (loadMeshFile("MeshViewerCMake/cube.obj"))
+		return;
+	if (loadMeshFile("gear.obj"))
+		return;
+	if (loadMeshFile("../gear.obj"))
+		return;
+	loadMeshFile("MeshViewerCMake/gear.obj");
+}
+
 void menu(int item)
 {
 	switch(item)
@@ -64,7 +96,9 @@ void menu(int item)
 		for (auto v : m->vertices) *(v->point) = *(v->point) + *(v->normal) * 0.01;
 		refresh(); break;
 	case MENU_SIMPLIFY:
-		m->simplify(); break;
+		m->simplify(); refresh(); break;
+	case MENU_OPENFILE:
+		loadDefaultMesh(); break;
 	case MENU_SHADINGTYPE:
 		smooth = !smooth; break;
 	case MENU_DRAWMESH:
@@ -168,7 +202,7 @@ void display()
 		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 1);
 
 		glBindVertexArray(vaos[VAO_VERTICES]);
-		glDrawElements(GL_POINTS, m->vertices.size(), GL_UNSIGNED_INT, 0);
+		glDrawArrays(GL_POINTS, 0, m->vertices.size());
 		glBindVertexArray(0);
 		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 0);
 	}
@@ -343,6 +377,7 @@ void initMesh()
 	closest_face = NULL;
 	
 	m = new myMesh();
+	loadDefaultMesh();
 }
 
 

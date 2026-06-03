@@ -61,6 +61,7 @@ void makeBuffers(myMesh *input_mesh)
 	vector <GLfloat> norms_per_face; norms_per_face.clear();
 	vector <GLfloat> norms; norms.clear();
 	vector <GLfloat> verts_and_normals; verts_and_normals.clear();
+	vector <GLfloat> vertex_verts; vertex_verts.clear();
 
 	num_triangles = 0;
 	unsigned int index = 0;
@@ -118,6 +119,10 @@ void makeBuffers(myMesh *input_mesh)
 
 	for (unsigned int i = 0; i < input_mesh->vertices.size(); i++)
 	{
+		vertex_verts.push_back((GLfloat)input_mesh->vertices[i]->point->X);
+		vertex_verts.push_back((GLfloat)input_mesh->vertices[i]->point->Y);
+		vertex_verts.push_back((GLfloat)input_mesh->vertices[i]->point->Z);
+
 		verts_and_normals.push_back((GLfloat)input_mesh->vertices[i]->point->X);
 		verts_and_normals.push_back((GLfloat)input_mesh->vertices[i]->point->Y);
 		verts_and_normals.push_back((GLfloat)input_mesh->vertices[i]->point->Z);
@@ -143,12 +148,6 @@ void makeBuffers(myMesh *input_mesh)
 	}
 	num_edge_verts = (unsigned int)edge_verts.size() / 3;
 
-	vector <GLuint> indices_vertices;
-	for (unsigned int i = 0; i < input_mesh->vertices.size(); i++)
-		indices_vertices.push_back(input_mesh->vertices[i]->index);
-
-
-
 	glDeleteBuffers(NUM_BUFFERS, &buffers[0]);
 	glDeleteVertexArrays(NUM_BUFFERS, &vaos[0]);
 
@@ -158,22 +157,22 @@ void makeBuffers(myMesh *input_mesh)
 	glGenBuffers(NUM_BUFFERS, &buffers[0]);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
-	glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GLfloat), &verts[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GLfloat), verts.empty() ? NULL : &verts[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERVERTEX]);
-	glBufferData(GL_ARRAY_BUFFER, norms.size() * sizeof(GLfloat), &norms[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, norms.size() * sizeof(GLfloat), norms.empty() ? NULL : &norms[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERFACE]);
-	glBufferData(GL_ARRAY_BUFFER, norms_per_face.size() * sizeof(GLfloat), &norms_per_face[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, norms_per_face.size() * sizeof(GLfloat), norms_per_face.empty() ? NULL : &norms_per_face[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICESFORNORMALDRAWING]);
-	glBufferData(GL_ARRAY_BUFFER, verts_and_normals.size() * sizeof(GLfloat), &verts_and_normals[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, verts_and_normals.size() * sizeof(GLfloat), verts_and_normals.empty() ? NULL : &verts_and_normals[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_INDICES_EDGES]);
-	glBufferData(GL_ARRAY_BUFFER, edge_verts.size() * sizeof(GLfloat), &edge_verts[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, edge_verts.size() * sizeof(GLfloat), edge_verts.empty() ? NULL : &edge_verts[0], GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[BUFFER_INDICES_VERTICES]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_vertices.size() * sizeof(GLuint), &indices_vertices[0], GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_INDICES_VERTICES]);
+	glBufferData(GL_ARRAY_BUFFER, vertex_verts.size() * sizeof(GLfloat), vertex_verts.empty() ? NULL : &vertex_verts[0], GL_STATIC_DRAW);
 
 
 	glGenVertexArrays(NUM_BUFFERS, &vaos[0]);
@@ -203,13 +202,9 @@ void makeBuffers(myMesh *input_mesh)
 	glBindVertexArray(0);
 
 	glBindVertexArray(vaos[VAO_VERTICES]);
-	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_INDICES_VERTICES]);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERVERTEX]);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[BUFFER_INDICES_VERTICES]);
 	glBindVertexArray(0);
 
 	glBindVertexArray(vaos[VAO_NORMALS]);
