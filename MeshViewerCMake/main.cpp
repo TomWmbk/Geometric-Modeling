@@ -207,88 +207,86 @@ void display()
 		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 0);
 	}
 
-	if (drawwireframe)
+	if (drawwireframe && vaos[VAO_EDGES])
 	{
-		glUseProgram(0);
-
-		glm::mat4 proj = glm::perspective(glm::radians(fovy), (float)Glut_w/(float)Glut_h, zNear, zFar);
-		glm::mat4 view = glm::lookAt(
-			glm::vec3(camera_eye.X, camera_eye.Y, camera_eye.Z),
-			glm::vec3(camera_eye.X+camera_forward.dX, camera_eye.Y+camera_forward.dY, camera_eye.Z+camera_forward.dZ),
-			glm::vec3(camera_up.dX, camera_up.dY, camera_up.dZ));
-
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadMatrixf(glm::value_ptr(proj));
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-		glLoadMatrixf(glm::value_ptr(view));
-
 		glLineWidth(1.5);
-		glColor3f(0.0f, 0.0f, 0.0f);
-		glBegin(GL_LINES);
-		for (unsigned int i = 0; i < m->halfedges.size(); i++)
-		{
-			if (m->halfedges[i] == NULL) continue;
-			myVertex *vs = m->halfedges[i]->source;
-			myVertex *vd = m->halfedges[i]->next->source;
-			glVertex3f((float)vs->point->X, (float)vs->point->Y, (float)vs->point->Z);
-			glVertex3f((float)vd->point->X, (float)vd->point->Y, (float)vd->point->Z);
-		}
-		glEnd();
-
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-
-		glUseProgram(shaderprogram);
+		color[0] = 0.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;
+		glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 1);
+		glBindVertexArray(vaos[VAO_EDGES]);
+		glDrawArrays(GL_LINES, 0, num_edge_verts);
+		glBindVertexArray(0);
+		glUniform1i(glGetUniformLocation(shaderprogram, "type"), 0);
 	}
 
 	if (drawsilhouette)
 	{
-		glLineWidth(4.0);
-		color[0] = 1.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;		
-		glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+		bool camera_moved = (camera_eye.X != silhouette_last_eye_x ||
+		                     camera_eye.Y != silhouette_last_eye_y ||
+		                     camera_eye.Z != silhouette_last_eye_z);
 
-		vector <GLuint> silhouette_edges;
-		for (vector<myHalfedge *>::iterator it = m->halfedges.begin(); it != m->halfedges.end(); it++)
+		if (silhouette_dirty || camera_moved)
 		{
-			myHalfedge *e = (*it);
-			myVertex *v1 = (*it)->source;
-			if ((*it)->twin == NULL) continue;
-			myVertex *v2 = (*it)->twin->source;
+			silhouette_last_eye_x = camera_eye.X;
+			silhouette_last_eye_y = camera_eye.Y;
+			silhouette_last_eye_z = camera_eye.Z;
+			silhouette_dirty = false;
 
-			myVector3D direction = camera_eye - (*v1->point + *v2->point) * 0.5;
-			double res1 = direction * *e->adjacent_face->normal;
-			double res2 = direction * *e->twin->adjacent_face->normal;
-
-			if ( res1<0 != res2 <0)
+			vector<GLfloat> silhouette_verts;
+			for (auto it = m->halfedges.begin(); it != m->halfedges.end(); it++)
 			{
-				silhouette_edges.push_back(v1->index);
-				silhouette_edges.push_back(v2->index);
+				myHalfedge *e = *it;
+				if (!e || !e->twin) continue;
+				if (!e->adjacent_face || !e->adjacent_face->normal) continue;
+				if (!e->twin->adjacent_face || !e->twin->adjacent_face->normal) continue;
+
+				myVertex *v1 = e->source;
+				myVertex *v2 = e->twin->source;
+
+				myVector3D direction = camera_eye - (*v1->point + *v2->point) * 0.5;
+				double res1 = direction * *e->adjacent_face->normal;
+				double res2 = direction * *e->twin->adjacent_face->normal;
+
+				if ((res1 < 0) != (res2 < 0))
+				{
+					silhouette_verts.push_back((GLfloat)v1->point->X);
+					silhouette_verts.push_back((GLfloat)v1->point->Y);
+					silhouette_verts.push_back((GLfloat)v1->point->Z);
+					silhouette_verts.push_back((GLfloat)v2->point->X);
+					silhouette_verts.push_back((GLfloat)v2->point->Y);
+					silhouette_verts.push_back((GLfloat)v2->point->Z);
+				}
+			}
+			silhouette_vert_count = (unsigned int)silhouette_verts.size() / 3;
+
+			if (silhouette_buffer == 0) glGenBuffers(1, &silhouette_buffer);
+			glBindBuffer(GL_ARRAY_BUFFER, silhouette_buffer);
+			glBufferData(GL_ARRAY_BUFFER, silhouette_verts.size() * sizeof(GLfloat),
+				silhouette_verts.empty() ? NULL : &silhouette_verts[0], GL_DYNAMIC_DRAW);
+
+			if (silhouette_vao == 0)
+			{
+				glGenVertexArrays(1, &silhouette_vao);
+				glBindVertexArray(silhouette_vao);
+				glBindBuffer(GL_ARRAY_BUFFER, silhouette_buffer);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+				glEnableVertexAttribArray(0);
+				glBindVertexArray(0);
 			}
 		}
 
-		GLuint silhouette_edges_buffer;
-		glGenBuffers(1, &silhouette_edges_buffer);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges_buffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges.size() * sizeof(GLuint),
-			&silhouette_edges[0], GL_STATIC_DRAW);
-
-		glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(0);
-
-		glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERVERTEX]);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-
-		glDrawElements(GL_LINES, silhouette_edges.size(), GL_UNSIGNED_INT, 0);
-
-		glDeleteBuffers(1, &silhouette_edges_buffer);
- 	}
+		if (silhouette_vert_count > 0)
+		{
+			glUniform1i(glGetUniformLocation(shaderprogram, "type"), 1);
+			glLineWidth(4.0);
+			color[0] = 1.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;
+			glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+			glBindVertexArray(silhouette_vao);
+			glDrawArrays(GL_LINES, 0, silhouette_vert_count);
+			glBindVertexArray(0);
+			glUniform1i(glGetUniformLocation(shaderprogram, "type"), 0);
+		}
+	}
 
 	if (drawnormals && vaos[VAO_NORMALS])
 	{
