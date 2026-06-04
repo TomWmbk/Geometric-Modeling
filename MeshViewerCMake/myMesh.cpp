@@ -278,7 +278,7 @@ void myMesh::subdivisionCatmullClark()
 		faces[i]->index=(int)i;
 	for (size_t i=0; i<halfedges.size(); i++)
 		halfedges[i]->index=(int)i;
-		vector<vector<int> > faceLoops(faces.size());
+			vector<vector<int> > faceLoops(faces.size());
 	vector<myPoint3D> facePoints(faces.size());
 	vector<vector<int> > vertexFaces(vertices.size());
 	vector<set<EdgeKey> > vertexEdges(vertices.size());
@@ -305,6 +305,45 @@ void myMesh::subdivisionCatmullClark()
 				break;
 			}
 
+			int a=h->source->index;
+			int b=h->next->source->index;
+			EdgeKey key=edgeKey(a,b);
+
+			faceLoops[fi].push_back(a);
+			vertexFaces[a].push_back((int)fi);
+			vertexEdges[a].insert(key);
+			vertexEdges[b].insert(key);
+
+			if (edgeHalfedge.find(key)==edgeHalfedge.end())
+				edgeHalfedge[key]=h;
+
+			if (h->twin==NULL || h->twin->adjacent_face==NULL)
+			{
+				boundaryNeighbors[a].insert(b);
+				boundaryNeighbors[b].insert(a);
+			}
+
+			sx+=oldPositions[a].X;
+			sy+=oldPositions[a].Y;
+			sz+=oldPositions[a].Z;
+
+			h=h->next;
+			count++;
+			if (count>maxSteps)
+			{
+				valid=false;
+				break;
+			}
+		} while (h!=start);
+
+		if (!valid || count<3)
+		{
+			faceLoops[fi].clear();
+			continue;
+		}
+
+		facePoints[fi]=myPoint3D(sx/(double)count, sy/(double)count, sz/(double)count);
+	}
 }
 
 void myMesh::simplify()
