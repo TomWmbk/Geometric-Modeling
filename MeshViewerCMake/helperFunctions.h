@@ -47,7 +47,7 @@ enum {
 enum { VAO_TRIANGLES_NORMSPERVERTEX = 0, VAO_TRIANGLES_NORMSPERFACE, VAO_EDGES, VAO_VERTICES, VAO_NORMALS };
 
 
-bool smooth = false;
+bool smooth = true;
 bool drawmesh = true;
 bool drawwireframe = false;
 bool drawmeshvertices = false;
@@ -56,8 +56,7 @@ bool drawnormals = false;
 
 // Silhouette caching: recompute only when camera moves or mesh changes
 GLuint silhouette_buffer = 0;
-GLuint silhouette_vao = 0;
-unsigned int silhouette_vert_count = 0;
+unsigned int silhouette_edge_count = 0;
 bool silhouette_dirty = true;
 double silhouette_last_eye_x = 9e9, silhouette_last_eye_y = 9e9, silhouette_last_eye_z = 9e9;
 
@@ -162,7 +161,7 @@ void makeBuffers(myMesh *input_mesh)
 	vaos.assign(vaos.size(), 0);
 
 	if (silhouette_buffer) { glDeleteBuffers(1, &silhouette_buffer); silhouette_buffer = 0; }
-	if (silhouette_vao) { glDeleteVertexArrays(1, &silhouette_vao); silhouette_vao = 0; }
+	silhouette_edge_count = 0;
 	silhouette_dirty = true;
 
 	glGenBuffers(NUM_BUFFERS, &buffers[0]);

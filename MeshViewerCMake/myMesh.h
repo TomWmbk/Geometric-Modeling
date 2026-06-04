@@ -29,6 +29,8 @@ public:
 	bool triangulate(myFace *);
 	void simplify();
 	void simplify(myVertex *);
+	void simplify(int target_face_count);
+	bool collapseEdge(myHalfedge *);
 	void surfaceOfRevolution();
 
 	void clear();

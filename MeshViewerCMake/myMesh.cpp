@@ -685,6 +685,58 @@ void myMesh::testHalfedges()
     cout << "[testHalfedges] done. checked=" << halfedges.size() << " errors=" << errors << "\n";
 }
 
+bool myMesh::collapseEdge(myHalfedge *h)
+{
+	if (!h || !h->twin) return false;
+	size_t old_size = vertices.size();
+	h->source->originof = h;
+	simplify(h->source);
+	return vertices.size() < old_size;
+}
+
+void myMesh::simplify(int target_face_count)
+{
+	if (target_face_count < 1) target_face_count = 1;
+
+	triangulate();
+
+	while ((int)faces.size() > target_face_count)
+	{
+		// Build candidate list: one entry per unique edge, sorted by squared length
+		vector<pair<double, myHalfedge *>> cands;
+		set<myHalfedge *> seen;
+		for (size_t i = 0; i < halfedges.size(); i++)
+		{
+			myHalfedge *h = halfedges[i];
+			if (seen.count(h)) continue;
+			if (!h->twin) continue;
+			seen.insert(h->twin);
+
+			myPoint3D *pa = h->source->point;
+			myPoint3D *pb = h->twin->source->point;
+			double dx = pa->X - pb->X;
+			double dy = pa->Y - pb->Y;
+			double dz = pa->Z - pb->Z;
+			cands.push_back(make_pair(dx*dx + dy*dy + dz*dz, h));
+		}
+		sort(cands.begin(), cands.end());
+
+		// Try shortest edges first; stop as soon as one collapse succeeds
+		bool collapsed = false;
+		for (size_t i = 0; i < cands.size(); i++)
+		{
+			if (collapseEdge(cands[i].second)) {
+				collapsed = true;
+				break;
+			}
+		}
+		if (!collapsed) break;
+	}
+
+	for (size_t i = 0; i < vertices.size(); i++) vertices[i]->index = (int)i;
+	for (size_t i = 0; i < halfedges.size(); i++) halfedges[i]->index = (int)i;
+}
+
 void myMesh::surfaceOfRevolution() {
     vector<pair<float,float>> curve = {
         {0.0f, -1.0f},
