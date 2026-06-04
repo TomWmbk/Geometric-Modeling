@@ -278,7 +278,8 @@ void myMesh::subdivisionCatmullClark()
 		faces[i]->index=(int)i;
 	for (size_t i=0; i<halfedges.size(); i++)
 		halfedges[i]->index=(int)i;
-			vector<vector<int> > faceLoops(faces.size());
+
+	vector<vector<int> > faceLoops(faces.size());
 	vector<myPoint3D> facePoints(faces.size());
 	vector<vector<int> > vertexFaces(vertices.size());
 	vector<set<EdgeKey> > vertexEdges(vertices.size());
@@ -344,6 +345,207 @@ void myMesh::subdivisionCatmullClark()
 
 		facePoints[fi]=myPoint3D(sx/(double)count, sy/(double)count, sz/(double)count);
 	}
+
+	bool hasValidFace=false;
+	for (size_t i=0; i<faceLoops.size(); i++)
+	{
+		if (faceLoops[i].size()>=3)
+		{
+			hasValidFace=true;
+			break;
+		}
+	}
+	if (!hasValidFace) return;
+
+	map<EdgeKey, myPoint3D> edgePoints;
+	for (map<EdgeKey, myHalfedge *>::iterator it=edgeHalfedge.begin(); it!=edgeHalfedge.end(); ++it)
+	{
+		EdgeKey key=it->first;
+		myHalfedge *h=it->second;
+		myPoint3D p0=oldPositions[key.first];
+		myPoint3D p1=oldPositions[key.second];
+
+		bool interior=(h!=NULL && h->adjacent_face!=NULL && h->twin!=NULL && h->twin->adjacent_face!=NULL);
+		if (interior)
+		{
+			myPoint3D f0=facePoints[h->adjacent_face->index];
+			myPoint3D f1=facePoints[h->twin->adjacent_face->index];
+			edgePoints[key]=myPoint3D(
+				(p0.X+p1.X+f0.X+f1.X)/4.0,
+				(p0.Y+p1.Y+f0.Y+f1.Y)/4.0,
+				(p0.Z+p1.Z+f0.Z+f1.Z)/4.0);
+		}
+		else
+		{
+			edgePoints[key]=myPoint3D(
+				(p0.X+p1.X)/2.0,
+				(p0.Y+p1.Y)/2.0,
+				(p0.Z+p1.Z)/2.0);
+		}
+	}
+
+	vector<myPoint3D> oldVertexPoints(vertices.size());
+	for (size_t vi=0; vi<vertices.size(); vi++)
+	{
+		myPoint3D s=oldPositions[vi];
+		int n=(int)vertexEdges[vi].size();
+
+		if (n==0)
+		{
+			oldVertexPoints[vi]=s;
+			continue;
+		}
+
+		if (boundaryNeighbors[vi].size()>=2)
+		{
+			set<int>::iterator bit=boundaryNeighbors[vi].begin();
+			int left=*bit;
+			++bit;
+			int right=*bit;
+			myPoint3D pl=oldPositions[left];
+			myPoint3D pr=oldPositions[right];
+			oldVertexPoints[vi]=myPoint3D(
+				(6.0*s.X+pl.X+pr.X)/8.0,
+				(6.0*s.Y+pl.Y+pr.Y)/8.0,
+				(6.0*s.Z+pl.Z+pr.Z)/8.0);
+			continue;
+		}
+
+		myPoint3D q(0.0, 0.0, 0.0);
+		for (size_t i=0; i<vertexFaces[vi].size(); i++)
+		{
+			myPoint3D fp=facePoints[vertexFaces[vi][i]];
+			q.X+=fp.X;
+			q.Y+=fp.Y;
+			q.Z+=fp.Z;
+		}
+		if (!vertexFaces[vi].empty())
+		{
+			double inv=1.0/(double)vertexFaces[vi].size();
+			q.X*=inv;
+			q.Y*=inv;
+			q.Z*=inv;
+		}
+		else
+		{
+			q=s;
+		}
+
+		myPoint3D r(0.0, 0.0, 0.0);
+		for (set<EdgeKey>::iterator eit=vertexEdges[vi].begin(); eit!=vertexEdges[vi].end(); ++eit)
+		{
+			int other=((*eit).first==(int)vi) ? (*eit).second : (*eit).first;
+			myPoint3D po=oldPositions[other];
+			r.X+=(s.X+po.X)*0.5;
+			r.Y+=(s.Y+po.Y)*0.5;
+			r.Z+=(s.Z+po.Z)*0.5;
+		}
+		r.X/=(double)n;
+		r.Y/=(double)n;
+		r.Z/=(double)n;
+
+		oldVertexPoints[vi]=myPoint3D(
+			(q.X+2.0*r.X+((double)n-3.0)*s.X)/(double)n,
+			(q.Y+2.0*r.Y+((double)n-3.0)*s.Y)/(double)n,
+			(q.Z+2.0*r.Z+((double)n-3.0)*s.Z)/(double)n);
+	}
+
+	vector<int> oldVertexIndex(vertices.size(), -1);
+	map<EdgeKey, int> edgePointIndex;
+	vector<int> facePointIndex(faces.size(), -1);
+	string oldName=name;
+
+	clear();
+	name=oldName;
+
+	auto addVertex=[&](const myPoint3D &p) -> int
+	{
+		myVertex *v=new myVertex();
+		v->point=new myPoint3D(p.X, p.Y, p.Z);
+		v->index=(int)vertices.size();
+		vertices.push_back(v);
+		return v->index;
+	};
+
+	for (size_t i=0; i<oldVertexPoints.size(); i++)
+		oldVertexIndex[i]=addVertex(oldVertexPoints[i]);
+
+	for (map<EdgeKey, myPoint3D>::iterator it=edgePoints.begin(); it!=edgePoints.end(); ++it)
+		edgePointIndex[it->first]=addVertex(it->second);
+
+	for (size_t i=0; i<facePoints.size(); i++)
+	{
+		if (faceLoops[i].size()>=3)
+			facePointIndex[i]=addVertex(facePoints[i]);
+	}
+
+	map<pair<int, int>, myHalfedge *> twinMap;
+	auto addFace=[&](const vector<int> &ids)
+	{
+		int degree=(int)ids.size();
+		if (degree<3) return;
+
+		myFace *f=new myFace();
+		vector<myHalfedge *> hs(degree);
+		for (int i=0; i<degree; i++)
+			hs[i]=new myHalfedge();
+
+		for (int i=0; i<degree; i++)
+		{
+			int inext=(i+1)%degree;
+			int iprev=(i-1+degree)%degree;
+
+			hs[i]->source=vertices[ids[i]];
+			hs[i]->adjacent_face=f;
+			hs[i]->next=hs[inext];
+			hs[i]->prev=hs[iprev];
+
+			if (hs[i]->source->originof==NULL)
+				hs[i]->source->originof=hs[i];
+
+			map<pair<int, int>, myHalfedge *>::iterator twinIt;
+			twinIt=twinMap.find(make_pair(ids[inext], ids[i]));
+			if (twinIt!=twinMap.end())
+			{
+				hs[i]->twin=twinIt->second;
+				twinIt->second->twin=hs[i];
+			}
+			twinMap[make_pair(ids[i], ids[inext])]=hs[i];
+
+			halfedges.push_back(hs[i]);
+		}
+
+		f->adjacent_halfedge=hs[0];
+		f->index=(int)faces.size();
+		faces.push_back(f);
+	};
+
+	for (size_t fi=0; fi<faceLoops.size(); fi++)
+	{
+		const vector<int> &loop=faceLoops[fi];
+		int k=(int)loop.size();
+		if (k<3) continue;
+
+		for (int i=0; i<k; i++)
+		{
+			int curr=loop[i];
+			int next=loop[(i+1)%k];
+			int prev=loop[(i-1+k)%k];
+			EdgeKey nextEdge=edgeKey(curr,next);
+			EdgeKey prevEdge=edgeKey(prev,curr);
+
+			vector<int> quad;
+			quad.push_back(oldVertexIndex[curr]);
+			quad.push_back(edgePointIndex[nextEdge]);
+			quad.push_back(facePointIndex[fi]);
+			quad.push_back(edgePointIndex[prevEdge]);
+			addFace(quad);
+		}
+	}
+
+	for (size_t i=0; i<vertices.size(); i++) vertices[i]->index=(int)i;
+	for (size_t i=0; i<halfedges.size(); i++) halfedges[i]->index=(int)i;
+	for (size_t i=0; i<faces.size(); i++) faces[i]->index=(int)i;
 }
 
 void myMesh::simplify()
