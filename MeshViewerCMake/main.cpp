@@ -57,17 +57,17 @@ bool loadMeshFile(const string &filename)
 
 void loadDefaultMesh()
 {
-	if (loadMeshFile("dolphin.obj"))
-		return;
-	if (loadMeshFile("../dolphin.obj"))
-		return;
-	if (loadMeshFile("MeshViewerCMake/dolphin.obj"))
-		return;
 	if (loadMeshFile("cube.obj"))
 		return;
 	if (loadMeshFile("../cube.obj"))
 		return;
 	if (loadMeshFile("MeshViewerCMake/cube.obj"))
+		return;
+	if (loadMeshFile("dolphin.obj"))
+		return;
+	if (loadMeshFile("../dolphin.obj"))
+		return;
+	if (loadMeshFile("MeshViewerCMake/dolphin.obj"))
 		return;
 	if (loadMeshFile("gear.obj"))
 		return;

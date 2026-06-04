@@ -256,7 +256,29 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p)
 
 void myMesh::subdivisionCatmullClark()
 {
-	/**** TODO ****/
+	void myMesh::subdivisionCatmullClark()
+{
+	if (vertices.empty() || faces.empty()) return;
+
+	typedef pair<int, int> EdgeKey;
+
+	auto edgeKey=[](int a, int b) -> EdgeKey
+	{
+		if (a<b) return make_pair(a,b);
+		return make_pair(b,a);
+	};
+
+	vector<myPoint3D> oldPositions(vertices.size());
+	for (size_t i=0; i<vertices.size(); i++)
+	{
+		vertices[i]->index=(int)i;
+		if (vertices[i]->point!=NULL)
+			oldPositions[i]=*(vertices[i]->point);
+	}
+	for (size_t i=0; i<faces.size(); i++)
+		faces[i]->index=(int)i;
+	for (size_t i=0; i<halfedges.size(); i++)
+		halfedges[i]->index=(int)i;
 }
 
 void myMesh::simplify()
