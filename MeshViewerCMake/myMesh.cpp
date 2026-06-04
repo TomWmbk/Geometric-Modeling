@@ -254,9 +254,8 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p)
 	/**** TODO ****/
 }
 
+
 void myMesh::subdivisionCatmullClark()
-{
-	void myMesh::subdivisionCatmullClark()
 {
 	if (vertices.empty() || faces.empty()) return;
 
@@ -279,6 +278,33 @@ void myMesh::subdivisionCatmullClark()
 		faces[i]->index=(int)i;
 	for (size_t i=0; i<halfedges.size(); i++)
 		halfedges[i]->index=(int)i;
+		vector<vector<int> > faceLoops(faces.size());
+	vector<myPoint3D> facePoints(faces.size());
+	vector<vector<int> > vertexFaces(vertices.size());
+	vector<set<EdgeKey> > vertexEdges(vertices.size());
+	vector<set<int> > boundaryNeighbors(vertices.size());
+	map<EdgeKey, myHalfedge *> edgeHalfedge;
+
+	const int maxSteps=(int)halfedges.size()+1;
+	for (size_t fi=0; fi<faces.size(); fi++)
+	{
+		myFace *f=faces[fi];
+		if (f==NULL || f->adjacent_halfedge==NULL) continue;
+
+		myHalfedge *start=f->adjacent_halfedge;
+		myHalfedge *h=start;
+		double sx=0.0, sy=0.0, sz=0.0;
+		int count=0;
+		bool valid=true;
+
+		do
+		{
+			if (h==NULL || h->source==NULL || h->next==NULL || h->next->source==NULL)
+			{
+				valid=false;
+				break;
+			}
+
 }
 
 void myMesh::simplify()
