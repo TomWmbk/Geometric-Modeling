@@ -237,6 +237,8 @@ void display()
 	if (drawwireframe)
 	{
 		glUseProgram(0);
+		GLboolean depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+		glDisable(GL_DEPTH_TEST);
 
 		glm::mat4 proj = glm::perspective(glm::radians(fovy), (float)Glut_w/(float)Glut_h, zNear, zFar);
 		glm::mat4 view = glm::lookAt(
@@ -269,6 +271,7 @@ void display()
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
 
+		if (depthTestEnabled) glEnable(GL_DEPTH_TEST);
 		glUseProgram(shaderprogram);
 	}
 
@@ -399,7 +402,7 @@ void initMesh()
 	closest_face = NULL;
 
 	m = new myMesh();
-	if (m->readFile("cube.obj")) {
+	if (m->readFile("apple.obj")) {
 		m->computeNormals();
 		makeBuffers(m);
 	}

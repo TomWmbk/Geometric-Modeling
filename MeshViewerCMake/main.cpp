@@ -57,11 +57,11 @@ bool loadMeshFile(const string &filename)
 
 void loadDefaultMesh()
 {
-	if (loadMeshFile("cube.obj"))
+	if (loadMeshFile("apple.obj"))
 		return;
-	if (loadMeshFile("../cube.obj"))
+	if (loadMeshFile("../apple.obj"))
 		return;
-	if (loadMeshFile("MeshViewerCMake/cube.obj"))
+	if (loadMeshFile("MeshViewerCMake/apple.obj"))
 		return;
 	if (loadMeshFile("dolphin.obj"))
 		return;
@@ -210,6 +210,8 @@ void display()
 	if (drawwireframe)
 	{
 		glUseProgram(0);
+		GLboolean depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+		glDisable(GL_DEPTH_TEST);
 
 		glm::mat4 proj = glm::perspective(glm::radians(fovy), (float)Glut_w/(float)Glut_h, zNear, zFar);
 		glm::mat4 view = glm::lookAt(
@@ -242,6 +244,7 @@ void display()
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
 
+		if (depthTestEnabled) glEnable(GL_DEPTH_TEST);
 		glUseProgram(shaderprogram);
 	}
 
