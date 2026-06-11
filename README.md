@@ -14,4 +14,4 @@ Catmull-Clark mesh subdivision
 
 The project was developed and tested on macOS using CMake and OpenGL.
 
-Regarding the use of AI tools, ChatGPT was occasionally used during the project for technical assistance. This mainly concerned the setup of the development environment on macOS, CMake and compilation issues, Git-related problems, OpenGL rendering debugging, and clarification of some concepts related to half-edge structures and geometric modeling. The implementation, testing and validation of the required algorithms were carried out by the student.
+Regarding the use of AI tools, ChatGPT was occasionally used during the project for technical assistance. This mainly concerned the setup of the development environment on macOS, CMake and compilation issues, Git-related problems, OpenGL rendering debugging, and clarification of some concepts related to half-edge structures and geometric modeling.
